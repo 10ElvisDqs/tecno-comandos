@@ -1,0 +1,191 @@
+Claro, aquí tienes una guía completa para configurar un servidor web, DHCP y DNS en Ubuntu Desktop, con las especificaciones que mencionaste, incluyendo las zonas directas e inversas del DNS.
+
+1. Configuración de IP Estática
+Primero, configuraremos el adaptador enp0s8 para que tenga una IP estática (192.168.100.150).
+
+Abre el terminal.
+Edita el archivo de configuración de red:
+bash
+Copiar código
+sudo nano /etc/netplan/01-netcfg.yaml
+Configura el archivo para asignar una IP estática al adaptador enp0s8:
+yaml
+Copiar código
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp0s3:
+      dhcp4: yes
+    enp0s8:
+      dhcp4: no
+      addresses:
+        - 192.168.100.150/24
+      gateway4: 192.168.100.1  # Cambia esto según tu red
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 8.8.4.4
+Aplica los cambios:
+bash
+Copiar código
+sudo netplan apply
+2. Instalación y Configuración de Apache
+Instalamos el servidor web Apache.
+
+Actualiza los paquetes:
+bash
+Copiar código
+sudo apt update
+Instala Apache:
+bash
+Copiar código
+sudo apt install apache2 -y
+Verifica que Apache esté corriendo:
+bash
+Copiar código
+sudo systemctl status apache2
+Configura la página de inicio (opcional):
+bash
+Copiar código
+echo "<h1>¡Bienvenido a devquinteros.dev!</h1>" | sudo tee /var/www/html/index.html
+3. Instalación y Configuración del Servidor DNS (Bind9)
+Instalaremos Bind9 para manejar el DNS.
+
+Instala Bind9:
+
+bash
+Copiar código
+sudo apt install bind9 bind9utils bind9-doc -y
+Edita el archivo de configuración para definir tu zona:
+
+bash
+Copiar código
+sudo nano /etc/bind/named.conf.local
+Agrega la configuración de tu zona para devquinteros.dev:
+
+plaintext
+Copiar código
+zone "devquinteros.dev" {
+    type master;
+    file "/etc/bind/db.devquinteros.dev";
+};
+
+zone "100.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/db.100.168.192";
+};
+Crea el archivo de zona directa:
+
+bash
+Copiar código
+sudo cp /etc/bind/db.local /etc/bind/db.devquinteros.dev
+Edita el archivo de zona directa:
+
+bash
+Copiar código
+sudo nano /etc/bind/db.devquinteros.dev
+Cambia el contenido para que se parezca a esto:
+
+plaintext
+Copiar código
+$TTL    604800
+@       IN      SOA     ns.devquinteros.dev. admin.devquinteros.dev. (
+                          2         ; Serial
+                     604800         ; Refresh
+                      86400         ; Retry
+                    2419200         ; Expire
+                     604800 )       ; Negative Cache TTL
+;
+@       IN      NS      ns.devquinteros.dev.
+ns      IN      A       192.168.100.150
+@       IN      A       192.168.100.150
+www     IN      A       192.168.100.150
+Crea el archivo de zona inversa:
+
+bash
+Copiar código
+sudo cp /etc/bind/db.local /etc/bind/db.100.168.192
+Edita el archivo de zona inversa:
+
+bash
+Copiar código
+sudo nano /etc/bind/db.100.168.192
+Cambia el contenido para que se parezca a esto:
+
+plaintext
+Copiar código
+$TTL    604800
+@       IN      SOA     ns.devquinteros.dev. admin.devquinteros.dev. (
+                          2         ; Serial
+                     604800         ; Refresh
+                      86400         ; Retry
+                    2419200         ; Expire
+                     604800 )       ; Negative Cache TTL
+;
+@       IN      NS      ns.devquinteros.dev.
+150     IN      PTR     devquinteros.dev.
+Reinicia el servicio Bind9 para aplicar los cambios:
+
+bash
+Copiar código
+sudo systemctl restart bind9
+4. Instalación y Configuración del Servidor DHCP
+Ahora, configuraremos un servidor DHCP para asignar IPs a otros dispositivos en la red.
+
+Instala isc-dhcp-server:
+bash
+Copiar código
+sudo apt install isc-dhcp-server -y
+Edita el archivo de configuración de DHCP:
+bash
+Copiar código
+sudo nano /etc/dhcp/dhcpd.conf
+Agrega la siguiente configuración (ajusta el rango de IPs según tu red):
+plaintext
+Copiar código
+subnet 192.168.100.0 netmask 255.255.255.0 {
+    range 192.168.100.100 192.168.100.200;
+    option routers 192.168.100.150;
+    option domain-name-servers 192.168.100.150;
+    option domain-name "devquinteros.dev";
+}
+Especifica el adaptador de red que usará DHCP. Abre el archivo:
+bash
+Copiar código
+sudo nano /etc/default/isc-dhcp-server
+Modifica la línea que dice INTERFACES="":
+plaintext
+Copiar código
+INTERFACES="enp0s8"
+Reinicia el servicio DHCP:
+bash
+Copiar código
+sudo systemctl restart isc-dhcp-server
+5. Verificación de la Configuración
+Prueba el servidor DNS:
+
+Desde otra máquina en la misma red, intenta hacer ping a devquinteros.dev:
+bash
+Copiar código
+ping devquinteros.dev
+También puedes verificar el registro A:
+bash
+Copiar código
+nslookup devquinteros.dev 192.168.100.150
+Verifica el DHCP:
+
+Conecta otro dispositivo a la red y verifica que obtenga una dirección IP dentro del rango que especificaste.
+Prueba el servidor web:
+
+Abre un navegador y navega a http://devquinteros.dev para verificar que Apache esté sirviendo la página correctamente.
+6. Configuración de Firewall (opcional)
+Asegúrate de que el firewall no esté bloqueando las conexiones necesarias:
+
+bash
+Copiar código
+sudo ufw allow 'Apache Full'
+sudo ufw allow 67/udp  # Puerto para DHCP
+sudo ufw allow 53/udp  # Puerto para DNS
+Conclusión
+Has configurado con éxito un servidor web, un servidor DHCP y un servidor DNS en tu máquina virtual Ubuntu. Ahora deberías ser capaz de hacer ping a devquinteros.dev desde otras máquinas y tener DHCP funcionando correctamente. Si necesitas más ayuda o si encuentras algún problema, no dudes en preguntar.
