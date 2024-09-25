@@ -189,3 +189,38 @@ sudo ufw allow 67/udp  # Puerto para DHCP
 sudo ufw allow 53/udp  # Puerto para DNS
 Conclusión
 Has configurado con éxito un servidor web, un servidor DHCP y un servidor DNS en tu máquina virtual Ubuntu. Ahora deberías ser capaz de hacer ping a devquinteros.dev desde otras máquinas y tener DHCP funcionando correctamente. Si necesitas más ayuda o si encuentras algún problema, no dudes en preguntar.
+
+
+
+//////////////////////////////////////
+para instalar visual studio code
+/////////////////////////////////////
+sudo dpkg -i code_
+///////////////////////////////////
+sudo nano /etc/resolv.conf
+nameserver 192.168.100.150
+
+Reinicia el Servicio de DNS
+sudo systemctl restart bind9
+
+Firewall
+Si estás usando un firewall (como ufw), asegúrate de que permite el tráfico DNS:
+
+sudo ufw allow 53
+ping devquinteros.dev
+
+5. Verifica el Archivo Hosts:
+Como último recurso, si aún no funciona, puedes añadir temporalmente una entrada en el archivo /etc/hosts para probar la conectividad:
+
+
+sudo nano /etc/hosts
+Añade la línea:
+
+192.168.100.150 devquinteros.dev
+
+
+
+
+Asegúrate de que tenga la siguiente línea (reemplaza con la IP correcta si es necesario):
+
+///////////////////////////////////
